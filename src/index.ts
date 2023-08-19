@@ -2,7 +2,16 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import { isString } from 'narrowing';
 import path from 'path';
+import { promisify } from 'util';
 import { PluginOption } from 'vite';
+import toml from "toml";
+
+async function readCrateName(cratePath: string): Promise<string> {
+  const cargoManifestPath = path.join(cratePath, "Cargo.toml");
+  const cargoManifest = await promisify<fs.PathLike, Buffer>(fs.readFile)(cargoManifestPath).then(b => toml.parse(b.toString()));
+
+  return cargoManifest.package.name;
+}
 
 /**
  *   return a Vite plugin for handling wasm-pack crate
@@ -98,7 +107,7 @@ function vitePluginWasmPack(
         const pkgPath = isNodeModule
           ? path.dirname(require.resolve(cratePath))
           : path.join(cratePath, pkg);
-        const crateName = path.basename(cratePath);
+        const crateName = await readCrateName(cratePath);
         if (!fs.existsSync(pkgPath)) {
           if (isNodeModule) {
             console.error(
